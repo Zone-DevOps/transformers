@@ -303,6 +303,8 @@
     title: Glossary
   - local: philosophy
     title: Philosophy
+  - local: architecture
+    title: Library Architecture
   - local: notebooks
     title: Notebooks with examples
   - local: community
