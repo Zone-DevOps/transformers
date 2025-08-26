@@ -213,8 +213,11 @@ class T5GemmaConfig(PretrainedConfig):
             setattr(self.decoder, key, value)
         super().__setattr__(key, value)
 
-    def get_text_config(self, *args, **kwargs):
-        # Always return self, regardless of the decoder option.
+    def get_text_config(self, decoder=True):
+        # For encoder-decoder models, return the decoder config by default
+        # as it's typically used for text generation and caching
+        if decoder:
+            return self.decoder
         return self
 
 
