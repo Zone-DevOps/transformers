@@ -321,6 +321,7 @@ class T5GemmaCrossAttention(nn.Module):
         attention_mask: Optional[torch.Tensor],
         encoder_hidden_states: Optional[torch.Tensor],
         past_key_values: Optional[Cache] = None,
+        cache_position: Optional[torch.LongTensor] = None,
         **kwargs: Unpack[FlashAttentionKwargs],
     ) -> tuple[torch.Tensor, Optional[torch.Tensor], Optional[tuple[torch.Tensor]]]:
         if encoder_hidden_states is None:
@@ -341,7 +342,14 @@ class T5GemmaCrossAttention(nn.Module):
             value_states = self.v_proj(encoder_hidden_states).view(encoder_hidden_shape).transpose(1, 2)
 
             if past_key_values is not None:
-                key_states, value_states = curr_past_key_value.update(key_states, value_states, self.layer_idx)
+                # For cross attention with static cache, we need to cache all encoder positions at once
+                # Use the full encoder sequence length as cache_position
+                encoder_seq_len = key_states.shape[-2]
+                cache_position_cross = torch.arange(encoder_seq_len, device=key_states.device)
+                cache_kwargs = {"cache_position": cache_position_cross}
+                key_states, value_states = curr_past_key_value.update(
+                    key_states, value_states, self.layer_idx, cache_kwargs
+                )
                 past_key_values.is_updated[self.layer_idx] = True
         else:
             key_states = curr_past_key_value.layers[self.layer_idx].keys
@@ -466,7 +474,7 @@ class T5GemmaDecoderLayer(T5GemmaEncoderLayer):
             encoder_hidden_states=encoder_hidden_states,
             attention_mask=encoder_attention_mask,
             past_key_values=past_key_values,
-            use_cache=use_cache,
+            cache_position=cache_position,
             **kwargs,
         )
         hidden_states = self.post_cross_attn_layernorm(hidden_states)

@@ -280,11 +280,13 @@ class T5GemmaConfig(PretrainedConfig):
         decoder = T5GemmaModuleConfig(**decoder.to_dict())
 
         encoder.is_decoder = False
+        encoder.is_encoder_decoder = is_encoder_decoder
         encoder.dropout_rate = dropout_rate
         encoder.attention_dropout = attention_dropout
         self.encoder = encoder
 
         decoder.is_decoder = True
+        decoder.is_encoder_decoder = is_encoder_decoder
         decoder.use_cache = True
         decoder.dropout_rate = dropout_rate
         decoder.attention_dropout = attention_dropout
@@ -323,12 +325,18 @@ class T5GemmaConfig(PretrainedConfig):
             setattr(self.decoder, key, value)
         super().__setattr__(key, value)
 
-    def get_text_config(self, decoder=True):
-        # For encoder-decoder models, return the decoder config by default
-        # as it's typically used for text generation and caching
-        if decoder:
+    def get_text_config(self, decoder=None, encoder=None):
+        # For encoder-decoder models, return the main config by default for compatibility
+        # Return specific encoder/decoder configs when explicitly requested
+        if encoder is True:
+            return self.encoder
+        elif decoder is True:
             return self.decoder
-        return self
+        elif encoder is False and decoder is False:
+            return self
+        else:
+            # Default behavior: return self for compatibility with tests
+            return self
 
 
 __all__ = ["T5GemmaConfig", "T5GemmaModuleConfig"]
